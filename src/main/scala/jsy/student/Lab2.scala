@@ -8,9 +8,9 @@ object Lab2 extends jsy.util.JsyApplication with Lab2Like {
 
   /*
    * CSCI 3155: Lab 2
-   * <Your Name>
+   * Brandon Zink
    * 
-   * Partner: <Your Partner's Name>
+   * Partner: Cameron Connor
    * Collaborators: <Any Collaborators>
    */
 
@@ -62,7 +62,12 @@ object Lab2 extends jsy.util.JsyApplication with Lab2Like {
     require(isValue(v))
     (v: @unchecked) match {
       case N(n) => n
-      case _ => ???
+      case B(b) => if(b) 1.0 else 0.0
+      case S(s) => s match {
+        case "" => 0.0
+        case _ => try {s.toDouble} catch {case _:NumberFormatException => Double.NaN}
+      }
+      case _ => Double.NaN
     }
   }
 
@@ -70,7 +75,9 @@ object Lab2 extends jsy.util.JsyApplication with Lab2Like {
     require(isValue(v))
     (v: @unchecked) match {
       case B(b) => b
-      case _ => ???
+      case N(n) => if(n == 0 || n == Double.NaN) false else true
+      case S(s) => if(s.equals("")) false else true
+      case Undefined => false
     }
   }
 
@@ -78,23 +85,49 @@ object Lab2 extends jsy.util.JsyApplication with Lab2Like {
     require(isValue(v))
     (v: @unchecked) match {
       case S(s) => s
+      case B(b) => b.toString
+      case N(n) => prettyNumber(n)
       case Undefined => "undefined"
-      case _ => ???
     }
   }
 
-  def eval(env: Env, e: Expr): Expr = {
-    e match {
-      /* Base Cases */
-
-      /* Inductive Cases */
-      case Print(e1) => println(pretty(eval(env, e1))); Undefined
-
-      case _ => ???
+  def eval(env: Env, e: Expr): Expr = e match {
+    /* Base Cases */
+    case v if isValue(v) => v
+    case Var(s) => lookup(env, s)
+    /* Inductive Cases */
+    // Unary operators
+    case Unary(Neg, e1) => N(-toNumber(eval(env, e1)))
+    case Unary(Not, e1) => B(!toBoolean(eval(env, e1)))
+    // Arithmetic operators
+    case Binary(Minus, e1, e2) => N(toNumber(eval(env, e1)) - toNumber(eval(env, e2)))
+    case Binary(Times, e1, e2) => N(toNumber(eval(env, e1)) * toNumber(eval(env, e2)))
+    case Binary(Div, e1, e2) => N(toNumber(eval(env, e1)) / toNumber(eval(env, e2)))
+    // Extra cases to handle string concatenation
+    case Binary(Plus, e1, e2) => (eval(env, e1), eval(env, e2)) match {
+      case (S(str), _) => S(str + toStr(e2))
+      case (_, S(str)) => S(toStr(e1) + str)
+      case (_, _) => N(toNumber(eval(env, e1)) + toNumber(eval(env, e2)))
     }
+    // Equalities / Inequalities
+    case Binary(Eq, e1, e2) => if(eval(env, e1) == eval(env, e2)) B(true) else B(false)
+    case Binary(Ne, e1, e2) => if(eval(env, e1) == eval(env, e2)) B(false) else B(true)
+    // FIXME lexicographical comparison of strings
+    case Binary(Lt, e1, e2) => if(toNumber(eval(env, e1)) < toNumber(eval(env, e2))) B(true) else B(false)
+    case Binary(Le, e1, e2) => if(toNumber(eval(env, e1)) <= toNumber(eval(env, e2))) B(true) else B(false)
+    case Binary(Gt, e1, e2) => if(toNumber(eval(env, e1)) > toNumber(eval(env, e2))) B(true) else B(false)
+    case Binary(Ge, e1, e2) => if(toNumber(eval(env, e1)) >= toNumber(eval(env, e2))) B(true) else B(false)
+    // Boolean Operators
+    case Binary(And, e1, e2) => if(toBoolean(eval(env, e1))) eval(env, e2) else eval(env, e1)
+    case Binary(Or, e1, e2) => if(toBoolean(eval(env, e1))) eval(env, e1) else eval(env, e2)
+    case Binary(Seq, e1, e2) => eval(env, e1); eval(env, e2)
+    // Conditional
+    case If(e1, e2, e3) => if(toBoolean(eval(env, e1))) eval(env, e2) else eval(env, e3)
+    // Print, Constant Declaration
+    case Print(e1) => println(pretty(eval(env, e1))); Undefined
+    case ConstDecl(x, e1, e2) => eval(extend(env, x, eval(env, e1)), e2)
+    case _ => Undefined
   }
-
-
 
   /* Interface to run your interpreter from the command-line.  You can ignore what's below. */
   def processFile(file: java.io.File) {
