@@ -112,7 +112,7 @@ object Lab2 extends jsy.util.JsyApplication with Lab2Like {
     // Equalities / Inequalities
     case Binary(Eq, e1, e2) => if(eval(env, e1) == eval(env, e2)) B(true) else B(false)
     case Binary(Ne, e1, e2) => if(eval(env, e1) == eval(env, e2)) B(false) else B(true)
-    // FIXME lexicographical comparison of strings
+
     case Binary(Lt, e1, e2) => if(toNumber(eval(env, e1)) < toNumber(eval(env, e2))) B(true) else B(false)
     case Binary(Le, e1, e2) => if(toNumber(eval(env, e1)) <= toNumber(eval(env, e2))) B(true) else B(false)
     case Binary(Gt, e1, e2) => if(toNumber(eval(env, e1)) > toNumber(eval(env, e2))) B(true) else B(false)
